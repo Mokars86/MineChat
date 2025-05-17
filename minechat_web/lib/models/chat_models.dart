@@ -1,7 +1,7 @@
 import 'package:uuid/uuid.dart';
 
 enum MessageStatus { sending, sent, delivered, read }
-enum MessageType { text, image, video, audio, document, location, contact }
+enum MessageType { text, image, video, audio, document, location, contact, transaction }
 
 class ChatMessage {
   final String id;
@@ -30,7 +30,7 @@ class ChatMessage {
     this.isDeleted = false,
     this.metadata,
     this.reactions,
-  }) : 
+  }) :
     this.id = id ?? const Uuid().v4(),
     this.timestamp = timestamp ?? DateTime.now();
 
@@ -94,8 +94,8 @@ class ChatMessage {
       type: MessageType.values[json['type']],
       isDeleted: json['isDeleted'] ?? false,
       metadata: json['metadata'],
-      reactions: json['reactions'] != null 
-          ? List<String>.from(json['reactions']) 
+      reactions: json['reactions'] != null
+          ? List<String>.from(json['reactions'])
           : null,
     );
   }
@@ -134,7 +134,7 @@ class ChatConversation {
     this.isMuted = false,
     this.isPinned = false,
     this.metadata,
-  }) : 
+  }) :
     this.id = id ?? const Uuid().v4(),
     this.createdAt = createdAt ?? DateTime.now(),
     this.lastMessageTime = lastMessageTime ?? DateTime.now();
@@ -202,8 +202,8 @@ class ChatConversation {
       avatar: json['avatar'],
       participantIds: List<String>.from(json['participantIds']),
       participantNames: Map<String, String>.from(json['participantNames']),
-      participantAvatars: json['participantAvatars'] != null 
-          ? Map<String, String?>.from(json['participantAvatars']) 
+      participantAvatars: json['participantAvatars'] != null
+          ? Map<String, String?>.from(json['participantAvatars'])
           : {},
       createdAt: DateTime.fromMillisecondsSinceEpoch(json['createdAt']),
       lastMessageTime: DateTime.fromMillisecondsSinceEpoch(json['lastMessageTime']),

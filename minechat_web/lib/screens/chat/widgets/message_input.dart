@@ -4,10 +4,12 @@ import '../../../theme.dart';
 
 class MessageInput extends StatefulWidget {
   final Function(String, MessageType, {Map<String, dynamic>? metadata}) onSendMessage;
+  final VoidCallback? onSendCrypto;
 
   const MessageInput({
     super.key,
     required this.onSendMessage,
+    this.onSendCrypto,
   });
 
   @override
@@ -27,7 +29,7 @@ class _MessageInputState extends State<MessageInput> {
 
   void _handleSubmitted(String text) {
     if (text.trim().isEmpty) return;
-    
+
     widget.onSendMessage(text.trim(), MessageType.text);
     _messageController.clear();
     setState(() {
@@ -80,7 +82,7 @@ class _MessageInputState extends State<MessageInput> {
               ],
             ),
           ),
-        
+
         // Message input bar
         Container(
           decoration: BoxDecoration(
@@ -108,7 +110,7 @@ class _MessageInputState extends State<MessageInput> {
                   });
                 },
               ),
-              
+
               // Text field
               Expanded(
                 child: TextField(
@@ -128,7 +130,7 @@ class _MessageInputState extends State<MessageInput> {
                   textCapitalization: TextCapitalization.sentences,
                 ),
               ),
-              
+
               // Emoji button
               IconButton(
                 icon: const Icon(Icons.emoji_emotions_outlined),
@@ -139,7 +141,16 @@ class _MessageInputState extends State<MessageInput> {
                   );
                 },
               ),
-              
+
+              // Crypto button
+              IconButton(
+                icon: const Icon(Icons.monetization_on),
+                color: AppTheme.primaryColor,
+                onPressed: () {
+                  widget.onSendCrypto?.call();
+                },
+              ),
+
               // Camera button
               IconButton(
                 icon: const Icon(Icons.camera_alt),
@@ -148,7 +159,7 @@ class _MessageInputState extends State<MessageInput> {
                   _handleAttachment(MessageType.image);
                 },
               ),
-              
+
               // Send button
               IconButton(
                 icon: const Icon(Icons.send),
@@ -207,7 +218,7 @@ class _MessageInputState extends State<MessageInput> {
     setState(() {
       _showAttachments = false;
     });
-    
+
     // Show a demo message for each attachment type
     switch (type) {
       case MessageType.image:
@@ -215,37 +226,37 @@ class _MessageInputState extends State<MessageInput> {
           const SnackBar(content: Text('Image attachment not implemented yet')),
         );
         break;
-      
+
       case MessageType.video:
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Video attachment not implemented yet')),
         );
         break;
-      
+
       case MessageType.audio:
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Audio attachment not implemented yet')),
         );
         break;
-      
+
       case MessageType.document:
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Document attachment not implemented yet')),
         );
         break;
-      
+
       case MessageType.location:
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Location attachment not implemented yet')),
         );
         break;
-      
+
       case MessageType.contact:
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Contact attachment not implemented yet')),
         );
         break;
-      
+
       default:
         break;
     }

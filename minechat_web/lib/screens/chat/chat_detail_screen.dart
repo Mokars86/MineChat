@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/call_provider.dart';
+import '../../providers/wallet_provider.dart';
 import '../../models/chat_models.dart';
+import '../../models/call_models.dart';
 import '../../services/auth_service.dart';
 import '../../theme.dart';
 import 'chat_info_screen.dart';
 import 'widgets/message_bubble.dart';
 import 'widgets/message_input.dart';
+import '../call/audio_call_screen.dart';
+import '../call/video_call_screen.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String conversationId;
@@ -159,6 +164,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               ),
               actions: [
                 IconButton(
+                  icon: const Icon(Icons.call),
+                  onPressed: () {
+                    _startCall(context, conversation, CallType.audio);
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.videocam),
+                  onPressed: () {
+                    _startCall(context, conversation, CallType.video);
+                  },
+                ),
+                IconButton(
                   icon: const Icon(Icons.search),
                   onPressed: () {
                     setState(() {
@@ -213,6 +230,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             onSendMessage: (content, type, {Map<String, dynamic>? metadata}) {
               chatProvider.sendMessage(content, type: type);
               _scrollToBottom();
+            },
+            onSendCrypto: () {
+              _showSendCryptoDialog(context);
             },
           ),
         ],
@@ -320,6 +340,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   );
                 },
               ),
+              if (!conversation.isGroup)
+                ListTile(
+                  leading: const Icon(Icons.monetization_on, color: AppTheme.primaryColor),
+                  title: const Text('Send Crypto'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showSendCryptoDialog(context);
+                  },
+                ),
               ListTile(
                 leading: Icon(conversation.isMuted ? Icons.volume_up : Icons.volume_off),
                 title: Text(conversation.isMuted ? 'Unmute' : 'Mute'),
@@ -439,6 +468,207 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           ],
         );
       },
+    );
+  }
+
+  void _startCall(BuildContext context, ChatConversation conversation, CallType type) async {
+    final authService = AuthService();
+    final currentUser = authService.currentUser;
+
+    if (currentUser == null) return;
+
+    // For group chats, we would show a contact picker here
+    if (conversation.isGroup) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Group calls not implemented yet')),
+      );
+      return;
+    }
+
+    // Get the other participant's ID (not the current user)
+    final otherParticipantId = conversation.participantIds.firstWhere(
+      (id) => id != currentUser.id,
+      orElse: () => '',
+    );
+
+    if (otherParticipantId.isEmpty) return;
+
+    final callProvider = Provider.of<CallProvider>(context, listen: false);
+
+    try {
+      await callProvider.startCall(
+        receiverId: otherParticipantId,
+        receiverName: conversation.participantNames[otherParticipantId] ?? 'Unknown',
+        receiverAvatar: conversation.participantAvatars[otherParticipantId],
+        type: type,
+        conversationId: conversation.id,
+      );
+
+      if (context.mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => type == CallType.audio
+                ? AudioCallScreen(call: callProvider.currentCall!)
+                : VideoCallScreen(call: callProvider.currentCall!),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  void _showSendCryptoDialog(BuildContext context) {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+
+    final TextEditingController amountController = TextEditingController();
+    final TextEditingController noteController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Send Crypto'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Current balance
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.account_balance_wallet,
+                    color: AppTheme.primaryColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Your Balance',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        Text(
+                          '${walletProvider.balance.toStringAsFixed(2)} MC',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Amount input
+            TextField(
+              controller: amountController,
+              decoration: const InputDecoration(
+                labelText: 'Amount',
+                hintText: 'Enter amount to send',
+                prefixIcon: Icon(Icons.monetization_on),
+                suffixText: 'MC',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              autofocus: true,
+            ),
+            const SizedBox(height: 16),
+
+            // Note input
+            TextField(
+              controller: noteController,
+              decoration: const InputDecoration(
+                labelText: 'Note (Optional)',
+                hintText: 'Add a note',
+                prefixIcon: Icon(Icons.note),
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              // Validate amount
+              if (amountController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter an amount')),
+                );
+                return;
+              }
+
+              double? amount = double.tryParse(amountController.text);
+              if (amount == null || amount <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a valid amount')),
+                );
+                return;
+              }
+
+              // Check if user has enough balance
+              if (amount > walletProvider.balance) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Insufficient balance')),
+                );
+                return;
+              }
+
+              Navigator.pop(context);
+
+              // Send the transaction
+              try {
+                await chatProvider.sendCryptoTransaction(
+                  amount: amount,
+                  note: noteController.text.isNotEmpty ? noteController.text : null,
+                );
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Successfully sent ${amount.toStringAsFixed(2)} MC'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+            ),
+            child: const Text('Send'),
+          ),
+        ],
+      ),
     );
   }
 }

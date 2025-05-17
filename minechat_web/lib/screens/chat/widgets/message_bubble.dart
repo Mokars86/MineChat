@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../../models/chat_models.dart';
+import '../../../models/transaction_message.dart';
 import '../../../theme.dart';
 import 'package:intl/intl.dart';
 
@@ -28,8 +30,8 @@ class MessageBubble extends StatelessWidget {
             maxWidth: MediaQuery.of(context).size.width * 0.75,
           ),
           child: Card(
-            color: isMe 
-                ? AppTheme.primaryColor 
+            color: isMe
+                ? AppTheme.primaryColor
                 : Theme.of(context).brightness == Brightness.dark
                     ? Colors.grey[800]
                     : Colors.grey[200],
@@ -37,6 +39,7 @@ class MessageBubble extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
+            elevation: 1,
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -55,10 +58,10 @@ class MessageBubble extends StatelessWidget {
                         ),
                       ),
                     ),
-                  
+
                   // Message content
                   _buildMessageContent(context),
-                  
+
                   // Timestamp and status
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
@@ -108,7 +111,7 @@ class MessageBubble extends StatelessWidget {
             color: isMe ? Colors.white : null,
           ),
         );
-      
+
       case MessageType.image:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,7 +156,7 @@ class MessageBubble extends StatelessWidget {
               ),
           ],
         );
-      
+
       case MessageType.video:
         return Container(
           decoration: BoxDecoration(
@@ -170,7 +173,7 @@ class MessageBubble extends StatelessWidget {
             ),
           ),
         );
-      
+
       case MessageType.audio:
         return Container(
           decoration: BoxDecoration(
@@ -208,7 +211,7 @@ class MessageBubble extends StatelessWidget {
             ],
           ),
         );
-      
+
       case MessageType.document:
         return Container(
           decoration: BoxDecoration(
@@ -248,7 +251,7 @@ class MessageBubble extends StatelessWidget {
             ],
           ),
         );
-      
+
       case MessageType.location:
         return Container(
           height: 150,
@@ -264,7 +267,7 @@ class MessageBubble extends StatelessWidget {
             ),
           ),
         );
-      
+
       case MessageType.contact:
         return Container(
           decoration: BoxDecoration(
@@ -306,7 +309,10 @@ class MessageBubble extends StatelessWidget {
             ],
           ),
         );
-      
+
+      case MessageType.transaction:
+        return _buildTransactionMessage(context);
+
       default:
         return Text(
           message.content,
@@ -320,7 +326,7 @@ class MessageBubble extends StatelessWidget {
   Widget _buildStatusIcon() {
     IconData iconData;
     Color iconColor;
-    
+
     switch (message.status) {
       case MessageStatus.sending:
         iconData = Icons.access_time;
@@ -339,11 +345,185 @@ class MessageBubble extends StatelessWidget {
         iconColor = Colors.blue;
         break;
     }
-    
+
     return Icon(
       iconData,
       size: 12,
       color: iconColor,
     );
+  }
+
+  Widget _buildTransactionMessage(BuildContext context) {
+    try {
+      // Parse the transaction data from the message content
+      final transactionData = jsonDecode(message.content) as Map<String, dynamic>;
+      final amount = transactionData['amount'] as double;
+      final currency = transactionData['currency'] as String;
+      final note = transactionData['note'] as String?;
+      final status = TransactionStatus.values[transactionData['status'] as int];
+
+      // Determine the transaction status color and icon
+      Color statusColor;
+      IconData statusIcon;
+      String statusText;
+
+      switch (status) {
+        case TransactionStatus.pending:
+          statusColor = Colors.orange;
+          statusIcon = Icons.pending;
+          statusText = 'Processing';
+          break;
+        case TransactionStatus.completed:
+          statusColor = Colors.green;
+          statusIcon = Icons.check_circle;
+          statusText = 'Completed';
+          break;
+        case TransactionStatus.failed:
+          statusColor = Colors.red;
+          statusIcon = Icons.error;
+          statusText = 'Failed';
+          break;
+        case TransactionStatus.cancelled:
+          statusColor = Colors.grey;
+          statusIcon = Icons.cancel;
+          statusText = 'Cancelled';
+          break;
+      }
+
+      return Container(
+        decoration: BoxDecoration(
+          color: isMe ? Colors.white24 : Colors.grey[300],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: statusColor.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Transaction header
+            Row(
+              children: [
+                Icon(
+                  isMe ? Icons.arrow_upward : Icons.arrow_downward,
+                  color: isMe ? Colors.orange : Colors.green,
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isMe ? 'You sent' : 'You received',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isMe ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        statusIcon,
+                        color: statusColor,
+                        size: 12,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        statusText,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            // Amount
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Center(
+                child: Text(
+                  '${amount.toStringAsFixed(2)} $currency',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: isMe ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ),
+            ),
+
+            // Note
+            if (note != null && note.isNotEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isMe
+                      ? Colors.white.withOpacity(0.1)
+                      : Colors.black.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Note:',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isMe ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      note,
+                      style: TextStyle(
+                        color: isMe ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      );
+    } catch (e) {
+      // Fallback if there's an error parsing the transaction data
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isMe ? Colors.white24 : Colors.grey[300],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.monetization_on,
+              color: isMe ? Colors.white : AppTheme.primaryColor,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Crypto transaction',
+                style: TextStyle(
+                  color: isMe ? Colors.white : null,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
   }
 }

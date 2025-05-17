@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/chat_models.dart';
+import '../models/transaction_message.dart';
 import 'auth_service.dart';
+import 'wallet_service.dart';
 
 class ChatService {
   static final ChatService _instance = ChatService._internal();
@@ -16,7 +18,7 @@ class ChatService {
   final _messagesControllers = <String, StreamController<List<ChatMessage>>>{};
 
   Stream<List<ChatConversation>> get conversationsStream => _conversationsController.stream;
-  
+
   Stream<List<ChatMessage>> getMessagesStream(String conversationId) {
     if (!_messagesControllers.containsKey(conversationId)) {
       _messagesControllers[conversationId] = StreamController<List<ChatMessage>>.broadcast();
@@ -25,7 +27,7 @@ class ChatService {
   }
 
   List<ChatConversation> get conversations => _conversations;
-  
+
   List<ChatMessage> getMessages(String conversationId) {
     return _messages[conversationId] ?? [];
   }
@@ -33,18 +35,18 @@ class ChatService {
   // Initialize the chat service
   Future<void> init() async {
     await _loadData();
-    
+
     if (_conversations.isEmpty) {
       await _loadDemoData();
     }
-    
+
     _notifyConversationsListeners();
   }
 
   // Load data from shared preferences
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Load conversations
     final conversationsJson = prefs.getString('conversations');
     if (conversationsJson != null) {
@@ -53,11 +55,11 @@ class ChatService {
       _conversations.addAll(
         conversationsData.map((data) => ChatConversation.fromJson(data)).toList()
       );
-      
+
       // Sort conversations by last message time
       _conversations.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
     }
-    
+
     // Load messages for each conversation
     for (final conversation in _conversations) {
       final messagesJson = prefs.getString('messages_${conversation.id}');
@@ -66,7 +68,7 @@ class ChatService {
         _messages[conversation.id] = messagesData
             .map((data) => ChatMessage.fromJson(data))
             .toList();
-        
+
         // Sort messages by timestamp
         _messages[conversation.id]!.sort((a, b) => a.timestamp.compareTo(b.timestamp));
       }
@@ -76,11 +78,11 @@ class ChatService {
   // Save data to shared preferences
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Save conversations
     final conversationsJson = jsonEncode(_conversations.map((c) => c.toJson()).toList());
     await prefs.setString('conversations', conversationsJson);
-    
+
     // Save messages for each conversation
     for (final entry in _messages.entries) {
       final messagesJson = jsonEncode(entry.value.map((m) => m.toJson()).toList());
@@ -92,9 +94,9 @@ class ChatService {
   Future<void> _loadDemoData() async {
     final authService = AuthService();
     final currentUser = authService.currentUser;
-    
+
     if (currentUser == null) return;
-    
+
     // Create demo conversations
     final List<ChatConversation> demoConversations = [
       ChatConversation(
@@ -151,13 +153,13 @@ class ChatService {
         lastMessageTime: DateTime.now().subtract(const Duration(days: 1)),
       ),
     ];
-    
+
     _conversations.addAll(demoConversations);
-    
+
     // Create demo messages
     for (final conversation in demoConversations) {
       final List<ChatMessage> demoMessages = [];
-      
+
       if (conversation.id == _conversations[0].id) {
         // Messages for John Doe
         demoMessages.addAll([
@@ -270,10 +272,10 @@ class ChatService {
           ),
         ]);
       }
-      
+
       _messages[conversation.id] = demoMessages;
     }
-    
+
     await _saveData();
   }
 
@@ -294,13 +296,13 @@ class ChatService {
       participantAvatars: participantAvatars ?? {},
       isGroup: isGroup,
     );
-    
+
     _conversations.add(conversation);
     _messages[conversation.id] = [];
-    
+
     await _saveData();
     _notifyConversationsListeners();
-    
+
     return conversation;
   }
 
@@ -319,7 +321,7 @@ class ChatService {
     if (conversationIndex == -1) {
       throw Exception('Conversation not found');
     }
-    
+
     // Create the message
     final message = ChatMessage(
       senderId: senderId,
@@ -331,13 +333,13 @@ class ChatService {
       metadata: metadata,
       status: MessageStatus.sending,
     );
-    
+
     // Add the message to the conversation
     if (!_messages.containsKey(conversationId)) {
       _messages[conversationId] = [];
     }
     _messages[conversationId]!.add(message);
-    
+
     // Update the conversation's last message info
     final updatedConversation = _conversations[conversationIndex].copyWith(
       lastMessageContent: content,
@@ -345,22 +347,22 @@ class ChatService {
       lastMessageTime: message.timestamp,
     );
     _conversations[conversationIndex] = updatedConversation;
-    
+
     // Sort conversations by last message time
     _conversations.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
-    
+
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     // Update message status to sent
     final messageIndex = _messages[conversationId]!.indexWhere((m) => m.id == message.id);
     if (messageIndex != -1) {
       _messages[conversationId]![messageIndex] = message.copyWith(status: MessageStatus.sent);
     }
-    
+
     // Simulate delivery delay
     await Future.delayed(const Duration(seconds: 1));
-    
+
     // Update message status to delivered
     final messageIndex2 = _messages[conversationId]!.indexWhere((m) => m.id == message.id);
     if (messageIndex2 != -1) {
@@ -368,20 +370,20 @@ class ChatService {
         status: MessageStatus.delivered
       );
     }
-    
+
     await _saveData();
     _notifyConversationsListeners();
     _notifyMessagesListeners(conversationId);
-    
+
     return message;
   }
 
   // Mark messages as read
   Future<void> markMessagesAsRead(String conversationId, String userId) async {
     if (!_messages.containsKey(conversationId)) return;
-    
+
     bool hasChanges = false;
-    
+
     for (int i = 0; i < _messages[conversationId]!.length; i++) {
       final message = _messages[conversationId]![i];
       if (message.senderId != userId && message.status != MessageStatus.read) {
@@ -389,7 +391,7 @@ class ChatService {
         hasChanges = true;
       }
     }
-    
+
     if (hasChanges) {
       await _saveData();
       _notifyMessagesListeners(conversationId);
@@ -399,7 +401,7 @@ class ChatService {
   // Delete a message
   Future<void> deleteMessage(String conversationId, String messageId) async {
     if (!_messages.containsKey(conversationId)) return;
-    
+
     final messageIndex = _messages[conversationId]!.indexWhere((m) => m.id == messageId);
     if (messageIndex != -1) {
       // Mark the message as deleted
@@ -407,7 +409,7 @@ class ChatService {
         isDeleted: true,
         content: 'This message was deleted'
       );
-      
+
       await _saveData();
       _notifyMessagesListeners(conversationId);
     }
@@ -420,7 +422,7 @@ class ChatService {
       _conversations[conversationIndex] = _conversations[conversationIndex].copyWith(
         isArchived: archive
       );
-      
+
       await _saveData();
       _notifyConversationsListeners();
     }
@@ -433,7 +435,7 @@ class ChatService {
       _conversations[conversationIndex] = _conversations[conversationIndex].copyWith(
         isMuted: mute
       );
-      
+
       await _saveData();
       _notifyConversationsListeners();
     }
@@ -446,14 +448,14 @@ class ChatService {
       _conversations[conversationIndex] = _conversations[conversationIndex].copyWith(
         isPinned: pin
       );
-      
+
       // Sort conversations by pinned status and last message time
       _conversations.sort((a, b) {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
         return b.lastMessageTime.compareTo(a.lastMessageTime);
       });
-      
+
       await _saveData();
       _notifyConversationsListeners();
     }
@@ -462,11 +464,11 @@ class ChatService {
   // Search conversations
   List<ChatConversation> searchConversations(String query) {
     if (query.isEmpty) return _conversations;
-    
+
     final lowercaseQuery = query.toLowerCase();
     return _conversations.where((conversation) {
       return conversation.name.toLowerCase().contains(lowercaseQuery) ||
-             conversation.participantNames.values.any((name) => 
+             conversation.participantNames.values.any((name) =>
                 name.toLowerCase().contains(lowercaseQuery));
     }).toList();
   }
@@ -474,11 +476,128 @@ class ChatService {
   // Search messages in a conversation
   List<ChatMessage> searchMessages(String conversationId, String query) {
     if (query.isEmpty || !_messages.containsKey(conversationId)) return [];
-    
+
     final lowercaseQuery = query.toLowerCase();
     return _messages[conversationId]!.where((message) {
       return message.content.toLowerCase().contains(lowercaseQuery);
     }).toList();
+  }
+
+  // Send a crypto transaction message
+  Future<ChatMessage> sendTransactionMessage({
+    required String conversationId,
+    required String senderId,
+    required String senderName,
+    String? senderAvatar,
+    required String receiverId,
+    required String receiverName,
+    required double amount,
+    String? note,
+  }) async {
+    // Find the conversation
+    final conversationIndex = _conversations.indexWhere((c) => c.id == conversationId);
+    if (conversationIndex == -1) {
+      throw Exception('Conversation not found');
+    }
+
+    // Create the transaction
+    final transaction = TransactionMessage(
+      senderId: senderId,
+      receiverId: receiverId,
+      amount: amount,
+      note: note,
+      status: TransactionStatus.pending,
+    );
+
+    // Create the transaction message content
+    final content = jsonEncode({
+      'transactionId': transaction.id,
+      'amount': amount,
+      'currency': transaction.currency,
+      'note': note,
+      'status': TransactionStatus.pending.index,
+    });
+
+    // Create the message
+    final message = ChatMessage(
+      senderId: senderId,
+      senderName: senderName,
+      senderAvatar: senderAvatar,
+      conversationId: conversationId,
+      content: content,
+      type: MessageType.transaction,
+      status: MessageStatus.sending,
+    );
+
+    // Add the message to the conversation
+    if (!_messages.containsKey(conversationId)) {
+      _messages[conversationId] = [];
+    }
+    _messages[conversationId]!.add(message);
+
+    // Update the conversation's last message info
+    final updatedConversation = _conversations[conversationIndex].copyWith(
+      lastMessageContent: 'Sent ${amount.toStringAsFixed(2)} ${transaction.currency}',
+      lastMessageSenderId: senderId,
+      lastMessageTime: message.timestamp,
+    );
+    _conversations[conversationIndex] = updatedConversation;
+
+    // Sort conversations by last message time
+    _conversations.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
+
+    // Process the transaction
+    final walletService = WalletService();
+    try {
+      // Deduct from sender's wallet
+      await walletService.addTransaction(
+        amount: amount,
+        description: 'Sent to $receiverName',
+        isDeposit: false,
+      );
+
+      // Add to receiver's wallet
+      await walletService.addTransactionForUser(
+        userId: receiverId,
+        amount: amount,
+        description: 'Received from $senderName',
+        isDeposit: true,
+      );
+
+      // Update transaction status to completed
+      final transactionData = jsonDecode(message.content) as Map<String, dynamic>;
+      transactionData['status'] = TransactionStatus.completed.index;
+
+      // Update message content with completed transaction
+      final messageIndex = _messages[conversationId]!.indexWhere((m) => m.id == message.id);
+      if (messageIndex != -1) {
+        _messages[conversationId]![messageIndex] = _messages[conversationId]![messageIndex].copyWith(
+          content: jsonEncode(transactionData),
+          status: MessageStatus.delivered,
+        );
+      }
+    } catch (e) {
+      // Update transaction status to failed
+      final transactionData = jsonDecode(message.content) as Map<String, dynamic>;
+      transactionData['status'] = TransactionStatus.failed.index;
+
+      // Update message content with failed transaction
+      final messageIndex = _messages[conversationId]!.indexWhere((m) => m.id == message.id);
+      if (messageIndex != -1) {
+        _messages[conversationId]![messageIndex] = _messages[conversationId]![messageIndex].copyWith(
+          content: jsonEncode(transactionData),
+          status: MessageStatus.delivered,
+        );
+      }
+
+      throw Exception('Failed to process transaction: ${e.toString()}');
+    }
+
+    await _saveData();
+    _notifyConversationsListeners();
+    _notifyMessagesListeners(conversationId);
+
+    return message;
   }
 
   void _notifyConversationsListeners() {

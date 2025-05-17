@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme.dart';
 import '../services/auth_service.dart';
 import 'auth/sign_in_screen.dart';
@@ -23,7 +24,7 @@ class ProfileScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: 20),
-                  
+
                   // Profile Picture
                   CircleAvatar(
                     radius: 60,
@@ -37,7 +38,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // User Name
                   Text(
                     user.name,
@@ -47,7 +48,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  
+
                   // User Email
                   Text(
                     user.email,
@@ -57,7 +58,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 40),
-                  
+
                   // Profile Options
                   _buildProfileOption(
                     context,
@@ -109,8 +110,23 @@ class ProfileScreen extends StatelessWidget {
                       );
                     },
                   ),
+                  Consumer<ThemeProvider>(
+                    builder: (context, themeProvider, _) {
+                      return SwitchListTile(
+                        title: const Text('Dark Mode'),
+                        secondary: Icon(
+                          themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                          color: AppTheme.primaryColor,
+                        ),
+                        value: themeProvider.isDarkMode,
+                        onChanged: (_) {
+                          themeProvider.toggleTheme();
+                        },
+                      );
+                    },
+                  ),
                   const SizedBox(height: 20),
-                  
+
                   // Logout Button
                   ElevatedButton.icon(
                     onPressed: () => _showLogoutDialog(context),
@@ -159,7 +175,7 @@ class ProfileScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              
+
               // Show loading dialog
               showDialog(
                 context: context,
@@ -168,11 +184,11 @@ class ProfileScreen extends StatelessWidget {
                   child: CircularProgressIndicator(),
                 ),
               );
-              
+
               // Logout
               final authService = AuthService();
               await authService.signOut();
-              
+
               // Navigate to login screen
               if (context.mounted) {
                 Navigator.of(context).pop(); // Dismiss loading dialog
