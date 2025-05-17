@@ -29,12 +29,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     // Select the conversation in the provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
       chatProvider.selectConversation(widget.conversationId);
-      
+
       // Scroll to bottom after messages load
       _scrollToBottom();
     });
@@ -64,7 +64,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final chatProvider = Provider.of<ChatProvider>(context);
     final authService = AuthService();
     final currentUser = authService.currentUser;
-    
+
     if (currentUser == null) {
       return const Scaffold(
         body: Center(
@@ -72,16 +72,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         ),
       );
     }
-    
+
     final conversation = chatProvider.conversations.firstWhere(
       (c) => c.id == widget.conversationId,
       orElse: () => throw Exception('Conversation not found'),
     );
-    
+
     final messages = _isSearching && _searchResults.isNotEmpty
         ? _searchResults
         : chatProvider.selectedConversationMessages;
-    
+
     return Scaffold(
       appBar: _isSearching
           ? AppBar(
@@ -187,11 +187,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     itemBuilder: (context, index) {
                       final message = messages[index];
                       final isMe = message.senderId == currentUser.id;
-                      
+
                       // Check if we need to show date header
-                      final showDateHeader = index == 0 || 
+                      final showDateHeader = index == 0 ||
                           !_isSameDay(messages[index - 1].timestamp, message.timestamp);
-                      
+
                       return Column(
                         children: [
                           if (showDateHeader)
@@ -207,10 +207,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     },
                   ),
           ),
-          
+
           // Message input
           MessageInput(
-            onSendMessage: (content, type) {
+            onSendMessage: (content, type, {Map<String, dynamic>? metadata}) {
               chatProvider.sendMessage(content, type: type);
               _scrollToBottom();
             },
@@ -260,7 +260,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       timestamp.month,
       timestamp.day,
     );
-    
+
     String dateText;
     if (messageDate == today) {
       dateText = 'Today';
@@ -269,7 +269,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     } else {
       dateText = '${timestamp.day}/${timestamp.month}/${timestamp.year}';
     }
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 16),
       child: Center(
@@ -292,14 +292,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   bool _isSameDay(DateTime date1, DateTime date2) {
-    return date1.year == date2.year && 
-           date1.month == date2.month && 
+    return date1.year == date2.year &&
+           date1.month == date2.month &&
            date1.day == date2.day;
   }
 
   void _showChatOptions(BuildContext context, ChatConversation conversation) {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    
+
     showModalBottomSheet(
       context: context,
       builder: (context) {
@@ -326,7 +326,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 onTap: () {
                   Navigator.pop(context);
                   chatProvider.muteConversation(
-                    conversation.id, 
+                    conversation.id,
                     !conversation.isMuted,
                   );
                 },
@@ -360,11 +360,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     final authService = AuthService();
     final currentUser = authService.currentUser;
-    
+
     if (currentUser == null) return;
-    
+
     final isMyMessage = message.senderId == currentUser.id;
-    
+
     showModalBottomSheet(
       context: context,
       builder: (context) {

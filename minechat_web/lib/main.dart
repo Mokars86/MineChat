@@ -5,6 +5,7 @@ import 'theme.dart';
 import 'services/auth_service.dart';
 import 'services/chat_service.dart';
 import 'providers/chat_provider.dart';
+import 'models/chat_models.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/sign_in_screen.dart';
 import 'screens/profile_screen.dart';
