@@ -1554,7 +1554,26 @@ class MiningTab extends StatelessWidget {
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: () => miningProvider.startMining(),
+                onTap: () {
+                  print('Mining button tapped');
+                  // Check if user is logged in
+                  final authService = AuthService();
+                  if (authService.currentUser == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please sign in to start mining')),
+                    );
+                    return;
+                  }
+
+                  // Start mining
+                  miningProvider.startMining().then((_) {
+                    if (miningProvider.error != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(miningProvider.error!)),
+                      );
+                    }
+                  });
+                },
                 borderRadius: BorderRadius.circular(60),
                 child: const Center(
                   child: Icon(

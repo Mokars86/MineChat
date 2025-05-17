@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/mining_models.dart';
 import '../services/mining_service.dart';
 import '../services/wallet_service.dart';
+import '../services/auth_service.dart';
 
 class MiningProvider extends ChangeNotifier {
   final MiningService _miningService = MiningService();
@@ -58,20 +59,35 @@ class MiningProvider extends ChangeNotifier {
   }
 
   Future<void> startMining() async {
-    if (isMining) return;
+    if (isMining) {
+      print('Mining already in progress, ignoring start request');
+      return;
+    }
 
+    // Check if user is logged in
+    final authService = AuthService();
+    if (authService.currentUser == null) {
+      _error = 'User not logged in. Please sign in to start mining.';
+      notifyListeners();
+      print('Mining failed to start: $_error');
+      return;
+    }
+
+    print('Starting mining with rate level: $_selectedMiningRateLevel');
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
       await _miningService.startMining(miningRateLevel: _selectedMiningRateLevel);
+      print('Mining started successfully');
 
       _isLoading = false;
       notifyListeners();
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
+      print('Error starting mining: $_error');
       notifyListeners();
     }
   }

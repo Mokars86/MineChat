@@ -70,12 +70,18 @@ class MiningService {
     }
 
     // Find the active mining session for the current user
-    _activeMiningSession = _miningSessions.firstWhere(
-      (session) =>
-        session.userId == currentUser.id &&
-        session.status == MiningStatus.mining,
-      orElse: () => null as MiningSession,
-    );
+    try {
+      _activeMiningSession = _miningSessions.firstWhere(
+        (session) =>
+          session.userId == currentUser.id &&
+          session.status == MiningStatus.mining,
+      );
+      print('MiningService: Found active mining session: ${_activeMiningSession!.id}');
+    } catch (e) {
+      // No active mining session found
+      _activeMiningSession = null;
+      print('MiningService: No active mining session found for user');
+    }
 
     // If there's an active mining session, check if it's complete
     if (_activeMiningSession != null && _activeMiningSession!.isMiningComplete) {
@@ -90,19 +96,25 @@ class MiningService {
 
   // Start a new mining session
   Future<MiningSession> startMining({int miningRateLevel = 1}) async {
+    print('MiningService: Starting mining with rate level $miningRateLevel');
     final authService = AuthService();
     final currentUser = authService.currentUser;
 
     if (currentUser == null) {
+      print('MiningService: Cannot start mining - User not logged in');
       throw Exception('User not logged in');
     }
 
     if (_activeMiningSession != null) {
+      print('MiningService: Cannot start mining - Session already in progress');
       throw Exception('A mining session is already in progress');
     }
 
+    print('MiningService: User authenticated, proceeding with mining');
+
     // Get the mining rate
     final miningRate = MiningRate.getByLevel(miningRateLevel);
+    print('MiningService: Using mining rate: ${miningRate.name} with base hash rate ${miningRate.hashRate}');
 
     // Generate hash rate based on the mining rate with some randomness
     final random = Random();
@@ -110,6 +122,8 @@ class MiningService {
 
     // Estimate reward based on hash rate (0.01 to 0.05 coins per MH/s)
     final estimatedReward = hashRate * (0.01 + random.nextDouble() * 0.04);
+
+    print('MiningService: Creating mining session with hash rate $hashRate and estimated reward $estimatedReward');
 
     // Create a new mining session
     final miningSession = MiningSession(
@@ -124,13 +138,18 @@ class MiningService {
     _miningSessions.insert(0, miningSession);
     _activeMiningSession = miningSession;
 
+    print('MiningService: Saving mining session data');
     await _saveData();
+
+    print('MiningService: Notifying listeners about new mining session');
     _notifyMiningSessionsListeners();
     _notifyActiveMiningSessionListener();
 
     // Start the mining timer
+    print('MiningService: Starting mining timer');
     _startMiningTimer();
 
+    print('MiningService: Mining session started successfully');
     return miningSession;
   }
 
@@ -241,21 +260,31 @@ class MiningService {
 
   // Start the mining timer to check for completion
   void _startMiningTimer() {
-    _miningTimer?.cancel();
+    print('MiningService: Setting up mining timer');
 
+    if (_miningTimer != null) {
+      print('MiningService: Cancelling existing timer');
+      _miningTimer?.cancel();
+    }
+
+    print('MiningService: Starting new periodic timer to check mining completion');
     _miningTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_activeMiningSession == null) {
+        print('MiningService: No active mining session, cancelling timer');
         timer.cancel();
         return;
       }
 
       if (_activeMiningSession!.isMiningComplete) {
+        print('MiningService: Mining session complete, processing completion');
         timer.cancel();
         _completeMiningSession();
       } else {
+        // Notify listeners about the active mining session (for UI updates)
         _notifyActiveMiningSessionListener();
       }
     });
+    print('MiningService: Mining timer started successfully');
   }
 
   // Get mining sessions for a specific user
