@@ -9,10 +9,12 @@ import 'providers/chat_provider.dart';
 import 'providers/call_provider.dart';
 import 'providers/mining_provider.dart';
 import 'providers/wallet_provider.dart';
+import 'providers/community_provider.dart';
 import 'models/chat_models.dart';
 import 'models/call_models.dart';
 import 'models/mining_models.dart';
 import 'models/wallet_address.dart';
+import 'models/community_models.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/sign_in_screen.dart';
 import 'screens/profile_screen.dart';
@@ -20,6 +22,8 @@ import 'screens/chat/chat_detail_screen.dart';
 import 'screens/call/incoming_call_screen.dart';
 import 'screens/call/audio_call_screen.dart';
 import 'screens/call/video_call_screen.dart';
+import 'screens/community/community_tab.dart';
+import 'screens/community/create_community_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +46,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CallProvider()),
         ChangeNotifierProvider(create: (_) => MiningProvider()),
         ChangeNotifierProvider(create: (_) => WalletProvider()),
+        ChangeNotifierProvider(create: (_) => CommunityProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
       child: Consumer<ThemeProvider>(
@@ -189,18 +194,20 @@ class _ChatTabState extends State<ChatTab> {
           : AppBar(
               title: const Text('MineChat'),
               actions: [
-                IconButton(
-                  icon: const Icon(Icons.call),
-                  onPressed: () {
-                    _showCallHistoryDialog(context);
-                  },
-                ),
+                // Search button first
                 IconButton(
                   icon: const Icon(Icons.search),
                   onPressed: () {
                     setState(() {
                       _isSearching = true;
                     });
+                  },
+                ),
+                // Call button second
+                IconButton(
+                  icon: const Icon(Icons.call),
+                  onPressed: () {
+                    _showCallHistoryDialog(context);
                   },
                 ),
                 Consumer<ThemeProvider>(
@@ -261,18 +268,55 @@ class _ChatTabState extends State<ChatTab> {
                     }
 
                     return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: AppTheme.primaryColor,
-                        backgroundImage: conversation.avatar != null
-                            ? NetworkImage(conversation.avatar!)
-                            : null,
-                        child: conversation.avatar == null
-                            ? Text(
-                                conversation.name[0].toUpperCase(),
-                                style: const TextStyle(color: Colors.white),
-                              )
-                            : null,
-                      ),
+                      leading: conversation.isGroup
+                        ? Stack(
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: AppTheme.primaryColor,
+                                backgroundImage: conversation.avatar != null
+                                    ? NetworkImage(conversation.avatar!)
+                                    : null,
+                                child: conversation.avatar == null
+                                    ? Text(
+                                        conversation.name[0].toUpperCase(),
+                                        style: const TextStyle(color: Colors.white),
+                                      )
+                                    : null,
+                              ),
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryColor,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Theme.of(context).scaffoldBackgroundColor,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.group,
+                                    size: 10,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : CircleAvatar(
+                            backgroundColor: AppTheme.primaryColor,
+                            backgroundImage: conversation.avatar != null
+                                ? NetworkImage(conversation.avatar!)
+                                : null,
+                            child: conversation.avatar == null
+                                ? Text(
+                                    conversation.name[0].toUpperCase(),
+                                    style: const TextStyle(color: Colors.white),
+                                  )
+                                : null,
+                          ),
                       title: Row(
                         children: [
                           Expanded(
@@ -484,13 +528,95 @@ class _ChatTabState extends State<ChatTab> {
 
     if (currentUser == null) return;
 
+    showDialog(
+      context: context,
+      builder: (context) {
+        return SimpleDialog(
+          title: const Text('New Chat'),
+          children: [
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(context);
+                _showNewContactDialog(context);
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.person_add, color: AppTheme.primaryColor),
+                  SizedBox(width: 16),
+                  Text('New Contact'),
+                ],
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(context);
+                _showNewGroupDialog(context);
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.group_add, color: AppTheme.primaryColor),
+                  SizedBox(width: 16),
+                  Text('New Group'),
+                ],
+              ),
+            ),
+            const Divider(),
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CommunityTab(),
+                  ),
+                );
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.people, color: AppTheme.primaryColor),
+                  SizedBox(width: 16),
+                  Text('Browse Communities'),
+                ],
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CreateCommunityScreen(),
+                  ),
+                );
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.add_circle, color: AppTheme.primaryColor),
+                  SizedBox(width: 16),
+                  Text('Create Community'),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showNewContactDialog(BuildContext context) {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final authService = AuthService();
+    final currentUser = authService.currentUser;
+
+    if (currentUser == null) return;
+
     final TextEditingController nameController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('New Chat'),
+          title: const Text('New Contact'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -499,6 +625,7 @@ class _ChatTabState extends State<ChatTab> {
                 decoration: const InputDecoration(
                   labelText: 'Contact Name',
                   hintText: 'Enter contact name',
+                  prefixIcon: Icon(Icons.person),
                 ),
                 autofocus: true,
               ),
@@ -556,6 +683,167 @@ class _ChatTabState extends State<ChatTab> {
               child: const Text('Create'),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showNewGroupDialog(BuildContext context) {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final authService = AuthService();
+    final currentUser = authService.currentUser;
+
+    if (currentUser == null) return;
+
+    final TextEditingController groupNameController = TextEditingController();
+
+    // Demo contacts for selection
+    final List<Map<String, dynamic>> contacts = [
+      {'id': '2', 'name': 'John Doe', 'avatar': 'https://ui-avatars.com/api/?name=John+Doe', 'selected': false},
+      {'id': '3', 'name': 'Alice', 'avatar': 'https://ui-avatars.com/api/?name=Alice', 'selected': false},
+      {'id': '4', 'name': 'Bob', 'avatar': 'https://ui-avatars.com/api/?name=Bob', 'selected': false},
+      {'id': '5', 'name': 'Charlie', 'avatar': 'https://ui-avatars.com/api/?name=Charlie', 'selected': false},
+      {'id': '6', 'name': 'Sarah Johnson', 'avatar': 'https://ui-avatars.com/api/?name=Sarah+Johnson', 'selected': false},
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Create Group'),
+              content: Container(
+                width: double.maxFinite,
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.6,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: groupNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Group Name',
+                        hintText: 'Enter group name',
+                        prefixIcon: Icon(Icons.group),
+                      ),
+                      autofocus: true,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Select Participants:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: contacts.length,
+                        itemBuilder: (context, index) {
+                          final contact = contacts[index];
+                          return CheckboxListTile(
+                            value: contact['selected'] as bool,
+                            onChanged: (value) {
+                              setState(() {
+                                contact['selected'] = value;
+                              });
+                            },
+                            title: Text(contact['name'] as String),
+                            secondary: CircleAvatar(
+                              backgroundImage: NetworkImage(contact['avatar'] as String),
+                            ),
+                            activeColor: AppTheme.primaryColor,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    if (groupNameController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please enter a group name')),
+                      );
+                      return;
+                    }
+
+                    // Get selected contacts
+                    final selectedContacts = contacts.where((c) => c['selected'] == true).toList();
+
+                    if (selectedContacts.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please select at least one participant')),
+                      );
+                      return;
+                    }
+
+                    Navigator.pop(context);
+
+                    try {
+                      // Prepare participant data
+                      final List<String> participantIds = [currentUser.id];
+                      final Map<String, String> participantNames = {
+                        currentUser.id: currentUser.name,
+                      };
+                      final Map<String, String?> participantAvatars = {
+                        currentUser.id: currentUser.photoUrl,
+                      };
+
+                      // Add selected contacts
+                      for (final contact in selectedContacts) {
+                        participantIds.add(contact['id'] as String);
+                        participantNames[contact['id'] as String] = contact['name'] as String;
+                        participantAvatars[contact['id'] as String] = contact['avatar'] as String;
+                      }
+
+                      // Create the group conversation
+                      final conversation = await chatProvider.createConversation(
+                        name: groupNameController.text.trim(),
+                        avatar: 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(groupNameController.text.trim())}&background=FF9800&color=fff',
+                        participantIds: participantIds,
+                        participantNames: participantNames,
+                        participantAvatars: participantAvatars,
+                        isGroup: true,
+                      );
+
+                      // Navigate to the chat screen
+                      if (context.mounted) {
+                        chatProvider.selectConversation(conversation.id);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => ChatDetailScreen(
+                              conversationId: conversation.id,
+                            ),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: ${e.toString()}')),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Create Group'),
+                ),
+              ],
+            );
+          }
         );
       },
     );

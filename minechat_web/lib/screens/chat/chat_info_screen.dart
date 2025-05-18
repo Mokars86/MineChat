@@ -15,7 +15,7 @@ class ChatInfoScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chatProvider = Provider.of<ChatProvider>(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chat Info'),
@@ -28,22 +28,63 @@ class ChatInfoScreen extends StatelessWidget {
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: AppTheme.primaryColor,
-                    backgroundImage: conversation.avatar != null
-                        ? NetworkImage(conversation.avatar!)
-                        : null,
-                    child: conversation.avatar == null
-                        ? Text(
-                            conversation.name[0].toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 40,
+                  conversation.isGroup
+                    ? Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundColor: AppTheme.primaryColor,
+                            backgroundImage: conversation.avatar != null
+                                ? NetworkImage(conversation.avatar!)
+                                : null,
+                            child: conversation.avatar == null
+                                ? Text(
+                                    conversation.name[0].toUpperCase(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 40,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Theme.of(context).scaffoldBackgroundColor,
+                                  width: 2,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.group,
+                                size: 20,
+                                color: Colors.white,
+                              ),
                             ),
-                          )
-                        : null,
-                  ),
+                          ),
+                        ],
+                      )
+                    : CircleAvatar(
+                        radius: 50,
+                        backgroundColor: AppTheme.primaryColor,
+                        backgroundImage: conversation.avatar != null
+                            ? NetworkImage(conversation.avatar!)
+                            : null,
+                        child: conversation.avatar == null
+                            ? Text(
+                                conversation.name[0].toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 40,
+                                ),
+                              )
+                            : null,
+                      ),
                   const SizedBox(height: 16),
                   Text(
                     conversation.name,
@@ -64,9 +105,9 @@ class ChatInfoScreen extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             const Divider(),
-            
+
             // Chat options
             ListTile(
               leading: Icon(
@@ -81,7 +122,7 @@ class ChatInfoScreen extends StatelessWidget {
                 );
               },
             ),
-            
+
             ListTile(
               leading: const Icon(
                 Icons.wallpaper,
@@ -94,7 +135,7 @@ class ChatInfoScreen extends StatelessWidget {
                 );
               },
             ),
-            
+
             ListTile(
               leading: const Icon(
                 Icons.block,
@@ -105,7 +146,7 @@ class ChatInfoScreen extends StatelessWidget {
                 _showBlockConfirmation(context);
               },
             ),
-            
+
             ListTile(
               leading: const Icon(
                 Icons.report,
@@ -116,9 +157,9 @@ class ChatInfoScreen extends StatelessWidget {
                 _showReportDialog(context);
               },
             ),
-            
+
             const Divider(),
-            
+
             // Media, links, and docs
             Padding(
               padding: const EdgeInsets.all(16),
@@ -164,9 +205,9 @@ class ChatInfoScreen extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             const Divider(),
-            
+
             // Participants (for group chats)
             if (conversation.isGroup) ...[
               Padding(
@@ -184,61 +225,191 @@ class ChatInfoScreen extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        Text(
-                          '${conversation.participantIds.length}',
-                          style: TextStyle(
-                            color: Colors.grey[600],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${conversation.participantIds.length} members',
+                            style: TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
-                    ...conversation.participantIds.map((id) {
-                      final name = conversation.participantNames[id] ?? 'Unknown';
-                      final avatar = conversation.participantAvatars[id];
-                      
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: AppTheme.primaryColor,
-                          backgroundImage: avatar != null
-                              ? NetworkImage(avatar)
-                              : null,
-                          child: avatar == null
-                              ? Text(
-                                  name[0].toUpperCase(),
-                                  style: const TextStyle(color: Colors.white),
-                                )
-                              : null,
-                        ),
-                        title: Text(name),
-                        subtitle: const Text('Last seen recently'),
-                      );
-                    }).toList(),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Add participant not implemented yet')),
-                          );
-                        },
-                        icon: const Icon(Icons.person_add),
-                        label: const Text('Add Participant'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                    // Admin section
+                    const Padding(
+                      padding: EdgeInsets.only(left: 16, bottom: 8),
+                      child: Text(
+                        'Admin',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
                         ),
                       ),
+                    ),
+                    ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: AppTheme.primaryColor,
+                        backgroundImage: conversation.participantAvatars[conversation.participantIds[0]] != null
+                            ? NetworkImage(conversation.participantAvatars[conversation.participantIds[0]]!)
+                            : null,
+                        child: conversation.participantAvatars[conversation.participantIds[0]] == null
+                            ? Text(
+                                (conversation.participantNames[conversation.participantIds[0]] ?? 'Unknown')[0].toUpperCase(),
+                                style: const TextStyle(color: Colors.white),
+                              )
+                            : null,
+                      ),
+                      title: Row(
+                        children: [
+                          Text(conversation.participantNames[conversation.participantIds[0]] ?? 'Unknown'),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text(
+                              'Admin',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      subtitle: const Text('Group creator'),
+                    ),
+
+                    // Other participants
+                    if (conversation.participantIds.length > 1) ...[
+                      const Padding(
+                        padding: EdgeInsets.only(left: 16, top: 16, bottom: 8),
+                        child: Text(
+                          'Members',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                      ...conversation.participantIds.skip(1).map((id) {
+                        final name = conversation.participantNames[id] ?? 'Unknown';
+                        final avatar = conversation.participantAvatars[id];
+
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: AppTheme.primaryColor,
+                            backgroundImage: avatar != null
+                                ? NetworkImage(avatar)
+                                : null,
+                            child: avatar == null
+                                ? Text(
+                                    name[0].toUpperCase(),
+                                    style: const TextStyle(color: Colors.white),
+                                  )
+                                : null,
+                          ),
+                          title: Text(name),
+                          subtitle: const Text('Last seen recently'),
+                          trailing: PopupMenuButton(
+                            icon: const Icon(Icons.more_vert),
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'message',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.message, size: 20),
+                                    SizedBox(width: 8),
+                                    Text('Message'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'call',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.call, size: 20),
+                                    SizedBox(width: 8),
+                                    Text('Call'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'remove',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.remove_circle, color: Colors.red, size: 20),
+                                    SizedBox(width: 8),
+                                    Text('Remove', style: TextStyle(color: Colors.red)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            onSelected: (value) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('$value functionality not implemented yet')),
+                              );
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ],
+
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Add participant not implemented yet')),
+                              );
+                            },
+                            icon: const Icon(Icons.person_add),
+                            label: const Text('Add Participant'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Create invite link not implemented yet')),
+                              );
+                            },
+                            icon: const Icon(Icons.link),
+                            label: const Text('Invite Link'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppTheme.primaryColor,
+                              side: BorderSide(color: AppTheme.primaryColor),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              
+
               const Divider(),
             ],
-            
+
             // Exit and delete options
             ListTile(
               leading: const Icon(
@@ -250,7 +421,7 @@ class ChatInfoScreen extends StatelessWidget {
                 _showExitOrDeleteConfirmation(context);
               },
             ),
-            
+
             const SizedBox(height: 24),
           ],
         ),

@@ -163,18 +163,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 ),
               ),
               actions: [
-                IconButton(
-                  icon: const Icon(Icons.call),
-                  onPressed: () {
-                    _startCall(context, conversation, CallType.audio);
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.videocam),
-                  onPressed: () {
-                    _startCall(context, conversation, CallType.video);
-                  },
-                ),
+                // Search button first
                 IconButton(
                   icon: const Icon(Icons.search),
                   onPressed: () {
@@ -183,6 +172,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     });
                   },
                 ),
+                // Call button second (if not a group)
+                if (!conversation.isGroup)
+                  IconButton(
+                    icon: const Icon(Icons.call),
+                    onPressed: () {
+                      _showCallOptions(context, conversation);
+                    },
+                  ),
+                // More options button last
                 IconButton(
                   icon: const Icon(Icons.more_vert),
                   onPressed: () {
@@ -340,6 +338,33 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   );
                 },
               ),
+              // Call options as the second item
+              if (!conversation.isGroup)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Expanded(
+                      child: ListTile(
+                        leading: const Icon(Icons.call, color: AppTheme.primaryColor),
+                        title: const Text('Audio Call'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _startCall(context, conversation, CallType.audio);
+                        },
+                      ),
+                    ),
+                    Expanded(
+                      child: ListTile(
+                        leading: const Icon(Icons.videocam, color: AppTheme.primaryColor),
+                        title: const Text('Video Call'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _startCall(context, conversation, CallType.video);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               if (!conversation.isGroup)
                 ListTile(
                   leading: const Icon(Icons.monetization_on, color: AppTheme.primaryColor),
@@ -520,6 +545,37 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         );
       }
     }
+  }
+
+  void _showCallOptions(BuildContext context, ChatConversation conversation) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.call, color: AppTheme.primaryColor),
+                title: const Text('Audio Call'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _startCall(context, conversation, CallType.audio);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.videocam, color: AppTheme.primaryColor),
+                title: const Text('Video Call'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _startCall(context, conversation, CallType.video);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _showSendCryptoDialog(BuildContext context) {
