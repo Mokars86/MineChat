@@ -4,14 +4,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 class User {
   final String id;
   final String name;
-  final String email;
-  final String photoUrl;
+  final String? email;
+  final String? photoUrl;
+  final String? bio;
+  final String? phone;
 
   User({
     required this.id,
     required this.name,
-    required this.email,
-    required this.photoUrl,
+    this.email,
+    this.photoUrl,
+    this.bio,
+    this.phone,
   });
 
   Map<String, dynamic> toJson() {
@@ -20,6 +24,8 @@ class User {
       'name': name,
       'email': email,
       'photoUrl': photoUrl,
+      'bio': bio,
+      'phone': phone,
     };
   }
 
@@ -29,6 +35,26 @@ class User {
       name: json['name'],
       email: json['email'],
       photoUrl: json['photoUrl'],
+      bio: json['bio'],
+      phone: json['phone'],
+    );
+  }
+
+  User copyWith({
+    String? id,
+    String? name,
+    String? email,
+    String? photoUrl,
+    String? bio,
+    String? phone,
+  }) {
+    return User(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      photoUrl: photoUrl ?? this.photoUrl,
+      bio: bio ?? this.bio,
+      phone: phone ?? this.phone,
     );
   }
 }
@@ -50,16 +76,18 @@ class AuthService {
     // Check if user is already logged in from shared preferences
     final prefs = await SharedPreferences.getInstance();
     final userJson = prefs.getString('user');
-    
+
     if (userJson != null) {
       try {
         final Map<String, dynamic> userData = Map<String, dynamic>.from({
           'id': prefs.getString('userId') ?? '',
           'name': prefs.getString('userName') ?? '',
-          'email': prefs.getString('userEmail') ?? '',
-          'photoUrl': prefs.getString('userPhotoUrl') ?? '',
+          'email': prefs.getString('userEmail'),
+          'photoUrl': prefs.getString('userPhotoUrl'),
+          'bio': prefs.getString('userBio'),
+          'phone': prefs.getString('userPhone'),
         });
-        
+
         _currentUser = User.fromJson(userData);
         _authStateController.add(_currentUser);
       } catch (e) {
@@ -68,6 +96,8 @@ class AuthService {
         await prefs.remove('userName');
         await prefs.remove('userEmail');
         await prefs.remove('userPhotoUrl');
+        await prefs.remove('userBio');
+        await prefs.remove('userPhone');
         _currentUser = null;
         _authStateController.add(null);
       }
@@ -81,7 +111,7 @@ class AuthService {
   Future<bool> signIn(String email, String password) async {
     // Simulate API call
     await Future.delayed(const Duration(seconds: 1));
-    
+
     // Demo login - in a real app, this would validate with a backend
     if (email == 'user@example.com' && password == 'password123') {
       _currentUser = User(
@@ -89,15 +119,19 @@ class AuthService {
         name: 'Demo User',
         email: email,
         photoUrl: 'https://ui-avatars.com/api/?name=Demo+User',
+        bio: 'I am a demo user',
+        phone: '+1234567890',
       );
-      
+
       // Save user data to shared preferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('userId', _currentUser!.id);
       await prefs.setString('userName', _currentUser!.name);
-      await prefs.setString('userEmail', _currentUser!.email);
-      await prefs.setString('userPhotoUrl', _currentUser!.photoUrl);
-      
+      await prefs.setString('userEmail', _currentUser!.email ?? '');
+      await prefs.setString('userPhotoUrl', _currentUser!.photoUrl ?? '');
+      await prefs.setString('userBio', _currentUser!.bio ?? '');
+      await prefs.setString('userPhone', _currentUser!.phone ?? '');
+
       _authStateController.add(_currentUser);
       return true;
     } else {
@@ -109,22 +143,26 @@ class AuthService {
   Future<bool> signUp(String name, String email, String password) async {
     // Simulate API call
     await Future.delayed(const Duration(seconds: 1));
-    
+
     // Demo registration - in a real app, this would create a user in a backend
     _currentUser = User(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
       email: email,
       photoUrl: 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}',
+      bio: '',
+      phone: '',
     );
-    
+
     // Save user data to shared preferences
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userId', _currentUser!.id);
     await prefs.setString('userName', _currentUser!.name);
-    await prefs.setString('userEmail', _currentUser!.email);
-    await prefs.setString('userPhotoUrl', _currentUser!.photoUrl);
-    
+    await prefs.setString('userEmail', _currentUser!.email ?? '');
+    await prefs.setString('userPhotoUrl', _currentUser!.photoUrl ?? '');
+    await prefs.setString('userBio', _currentUser!.bio ?? '');
+    await prefs.setString('userPhone', _currentUser!.phone ?? '');
+
     _authStateController.add(_currentUser);
     return true;
   }
@@ -137,7 +175,9 @@ class AuthService {
     await prefs.remove('userName');
     await prefs.remove('userEmail');
     await prefs.remove('userPhotoUrl');
-    
+    await prefs.remove('userBio');
+    await prefs.remove('userPhone');
+
     _currentUser = null;
     _authStateController.add(null);
   }
@@ -146,8 +186,45 @@ class AuthService {
   Future<bool> resetPassword(String email) async {
     // Simulate API call
     await Future.delayed(const Duration(seconds: 1));
-    
+
     // In a real app, this would send a password reset email
+    return true;
+  }
+
+  // Update user profile
+  Future<bool> updateUserProfile({
+    String? name,
+    String? email,
+    String? photoUrl,
+    String? bio,
+    String? phone,
+  }) async {
+    if (_currentUser == null) return false;
+
+    // Simulate API call
+    await Future.delayed(const Duration(seconds: 1));
+
+    // Update user data
+    _currentUser = _currentUser!.copyWith(
+      name: name,
+      email: email,
+      photoUrl: photoUrl,
+      bio: bio,
+      phone: phone,
+    );
+
+    // Save updated user data to shared preferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userId', _currentUser!.id);
+    await prefs.setString('userName', _currentUser!.name);
+    await prefs.setString('userEmail', _currentUser!.email ?? '');
+    await prefs.setString('userPhotoUrl', _currentUser!.photoUrl ?? '');
+    await prefs.setString('userBio', _currentUser!.bio ?? '');
+    await prefs.setString('userPhone', _currentUser!.phone ?? '');
+
+    // Notify listeners
+    _authStateController.add(_currentUser);
+
     return true;
   }
 

@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../theme.dart';
 import '../services/auth_service.dart';
 import 'auth/sign_in_screen.dart';
+import 'profile/edit_profile_screen.dart';
+import 'profile/linked_devices_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -26,16 +28,43 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // Profile Picture
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundColor: AppTheme.primaryColor.withOpacity(0.2),
-                    child: Text(
-                      user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                      style: TextStyle(
-                        fontSize: 60,
-                        color: AppTheme.primaryColor,
+                  Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      CircleAvatar(
+                        radius: 60,
+                        backgroundColor: AppTheme.primaryColor.withOpacity(0.2),
+                        backgroundImage: user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
+                        child: user.photoUrl == null
+                            ? Text(
+                                user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                                style: TextStyle(
+                                  fontSize: 60,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              )
+                            : null,
                       ),
-                    ),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Theme.of(context).scaffoldBackgroundColor,
+                            width: 2,
+                          ),
+                        ),
+                        child: GestureDetector(
+                          onTap: () => _navigateToEditProfile(context),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
 
@@ -50,13 +79,45 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 4),
 
                   // User Email
-                  Text(
-                    user.email,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
+                  if (user.email != null && user.email!.isNotEmpty)
+                    Text(
+                      user.email!,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
                     ),
-                  ),
+
+                  // User Bio
+                  if (user.bio != null && user.bio!.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Bio',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            user.bio!,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 40),
 
                   // Profile Options
@@ -64,11 +125,13 @@ class ProfileScreen extends StatelessWidget {
                     context,
                     Icons.person,
                     'Edit Profile',
-                    () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Edit Profile not implemented yet')),
-                      );
-                    },
+                    () => _navigateToEditProfile(context),
+                  ),
+                  _buildProfileOption(
+                    context,
+                    Icons.devices,
+                    'Linked Devices',
+                    () => _navigateToLinkedDevices(context),
                   ),
                   _buildProfileOption(
                     context,
@@ -158,6 +221,26 @@ class ProfileScreen extends StatelessWidget {
       title: Text(title),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
+    );
+  }
+
+  Future<void> _navigateToEditProfile(BuildContext context) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+    );
+
+    // If profile was updated, refresh the UI
+    if (result == true) {
+      // The StatelessWidget will rebuild with the updated user data
+      // since we're using AuthService.currentUser directly
+    }
+  }
+
+  void _navigateToLinkedDevices(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const LinkedDevicesScreen()),
     );
   }
 
