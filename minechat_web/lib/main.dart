@@ -24,6 +24,8 @@ import 'screens/call/audio_call_screen.dart';
 import 'screens/call/video_call_screen.dart';
 import 'screens/community/community_tab.dart';
 import 'screens/community/create_community_screen.dart';
+import 'screens/qr/qr_scanner_screen.dart';
+import 'screens/qr/my_qr_code_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -557,6 +559,43 @@ class _ChatTabState extends State<ChatTab> {
                   Icon(Icons.group_add, color: AppTheme.primaryColor),
                   SizedBox(width: 16),
                   Text('New Group'),
+                ],
+              ),
+            ),
+            const Divider(),
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const QRScannerScreen(),
+                  ),
+                );
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.qr_code_scanner, color: AppTheme.primaryColor),
+                  SizedBox(width: 16),
+                  Text('Scan QR Code'),
+                ],
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MyQRCodeScreen(),
+                  ),
+                );
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.qr_code, color: AppTheme.primaryColor),
+                  SizedBox(width: 16),
+                  Text('My QR Code'),
                 ],
               ),
             ),
